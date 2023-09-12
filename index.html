@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Convertir HTML/CSS en PDF</title>
+</head>
+<body>
+    <h1>HTML/CSS to Pdf</h1>
+    
+    <!-- Zone d'affichage des templates -->
+    <div id="templateList">
+        <!-- Les templates seront ajoutés ici dynamiquement -->
+    </div>
+    <textarea id="htmlInput" placeholder="Entrez votre code HTML/CSS ici" style="width: 100%;"></textarea>
+    <button id="convertButton">Convertir en PDF</button>
+    <button id="saveHTMLButton">Enregistrer le modèle HTML</button>
+    <label>
+        <input type="checkbox" id="bootstrapToggle"> Activer Bootstrap
+    </label>
+    <iframe id="pdfPreview" width="100%" height="500px" frameborder="0"></iframe>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+        const htmlInput = document.getElementById('htmlInput');
+        const convertButton = document.getElementById('convertButton');
+        const saveHTMLButton = document.getElementById('saveHTMLButton');
+        const bootstrapToggle = document.getElementById('bootstrapToggle');
+        const pdfPreview = document.getElementById('pdfPreview');
+        displayTemplates();
+
+        function updatePdfPreview(htmlContent) {
+            const blob = new Blob([htmlContent], { type: 'text/html' });
+            const url = window.URL.createObjectURL(blob);
+            pdfPreview.src = url;
+        }
+
+        function displayTemplates() {
+            const templateList = document.getElementById("templateList");
+            templateList.innerHTML = "";
+
+            // Récupérer les modèles depuis le localStorage
+            const templatesFromStorage = JSON.parse(localStorage.getItem("templates")) || [];
+
+            templatesFromStorage.forEach((template, index) => {
+                const templateButton = document.createElement("button");
+                templateButton.textContent = template.name;
+                templateButton.addEventListener("click", () => {
+                    htmlInput.value = template.content;
+                    updatePdfPreview(htmlInput.value)
+                });
+
+                templateList.appendChild(templateButton);
+            });
+        }
+
+        function saveTemplate() {
+            const templateContent = htmlInput.value;
+
+            // Récupérer les modèles existants du localStorage ou initialiser un tableau vide
+            const templatesFromStorage = JSON.parse(localStorage.getItem("templates")) || [];
+
+            // Ajouter le nouveau modèle à la liste
+            templatesFromStorage.push({
+                name: "Modèle " + (templatesFromStorage.length + 1), // Nom par défaut
+                content: templateContent
+            });
+
+            // Enregistrer la liste mise à jour dans le localStorage
+            localStorage.setItem("templates", JSON.stringify(templatesFromStorage));
+
+            // Actualiser l'affichage des modèles
+            displayTemplates();
+        }
+
+        // Mise à jour de l'aperçu lorsque l'utilisateur entre du code
+        htmlInput.addEventListener('input', function () {
+            const htmlContent = htmlInput.value;
+            updatePdfPreview(htmlContent);
+        });
+
+        convertButton.addEventListener('click', async () => {
+            const htmlContent = htmlInput.value;
+            const includeBootstrap = bootstrapToggle.checked; 
+
+            const response = await fetch('/convert', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ htmlContent, includeBootstrap })
+        });
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'converted.pdf';
+        document.body.appendChild(a);
+        a.click();
+        pdfPreview.src = url;
+        window.URL.revokeObjectURL(url);
+    });
+
+    saveHTMLButton.addEventListener("click", saveTemplate);
+});
+    </script>
+</body>
+</html>
